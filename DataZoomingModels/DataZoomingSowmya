@@ -1,0 +1,317 @@
+-- Create Daily_Event table
+
+CREATE TABLE Daily_Event (
+    event_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    event_name VARCHAR(255),
+    event_type VARCHAR(255),
+    start_time DATETIME,
+    end_time DATETIME,
+    location VARCHAR(255),
+    description TEXT,
+    invitees VARCHAR(255),
+    reminders VARCHAR(255),
+    status VARCHAR(255)
+);
+
+-- Create Weekly_Event table
+
+CREATE TABLE Weekly_Event (
+    event_id INT NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    event_name VARCHAR(255),
+    event_type VARCHAR(255),
+    start_time DATETIME,
+    end_time DATETIME,
+    location VARCHAR(255),
+    description TEXT,
+    invitees VARCHAR(255),
+    reminders VARCHAR(255),
+    status VARCHAR(255),
+    PRIMARY KEY (event_id, start_date),
+    FOREIGN KEY (event_id) REFERENCES Daily_Event(event_id) ON DELETE CASCADE
+);
+
+-- Create Monthly_Event table
+
+CREATE TABLE Monthly_Event (
+    event_id INT NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    event_name VARCHAR(255),
+    event_type VARCHAR(255),
+    start_time DATETIME,
+    end_time DATETIME,
+    location VARCHAR(255),
+    description TEXT,
+    invitees VARCHAR(255),
+    reminders VARCHAR(255),
+    status VARCHAR(255),
+    PRIMARY KEY (event_id, start_date),
+    FOREIGN KEY (event_id) REFERENCES Daily_Event(event_id) ON DELETE CASCADE
+);
+
+-- Create Yearly_Event table
+
+CREATE TABLE Yearly_Event (
+    event_id INT NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    event_name VARCHAR(255),
+    event_type VARCHAR(255),
+    start_time DATETIME,
+    end_time DATETIME,
+    location VARCHAR(255),
+    description TEXT,
+    invitees VARCHAR(255),
+    reminders VARCHAR(255),
+    status VARCHAR(255),
+    PRIMARY KEY (event_id, start_date),
+    FOREIGN KEY (event_id) REFERENCES Daily_Event(event_id) ON DELETE CASCADE
+    );
+
+
+---Insert records into Daily Event Table
+
+INSERT INTO Daily_Event (event_name, event_type, start_time, end_time, location, description, invitees, reminders, status) VALUES
+('Project Presentation', 'Meeting', '2023-03-15 10:00:00', '2023-03-15 12:00:00','Conference Room B', 'Present latest project findings to management','soumya@gmail.com','SMS','Pending'),
+('Lunch with Mike', 'Social events', '2023-02-03 12:00:00', '2023-02-03 13:00:00', 'Cafe on Main', 'Catch up with Mike', 'Mike@gmail.com','Email','Completed'),
+('Doctor’s Appointment', 'Appointment', '2023-02-05 14:30:00', '2023-02-05 15:30:00', 'Medical Center', 'Medical checkup','Annual_checkup@yahoo.com','SMS','Cancelled'),
+('Client Presentation', 'Meeting', '2023-03-17 10:00:00', '2023-03-17 12:00:00', 'Conference Room', 'Present latest project findings to management','Management_team@outlook.com','Email','Pending'),
+('Dentist Appointment', 'Appointment', '2023-01-08 16:30:00', '2023-01-08 17:30:00', 'Dental Center', 'Dental checkup','Dentalclinic@gmail.com','SMS','Completed'),
+('Sales Meeting', 'Meeting', '2022-12-09 15:00:00', '2022-12-09 16:30:00', 'Conference Room A', 'Discuss sales strategy for next quarter', 'Sales team@example.com','Email','Completed');
+
+
+-- Trigger to insert data into the weekly events table when insert on daily event table
+
+CREATE TRIGGER daily_to_weekly
+AFTER INSERT ON Daily_Event
+FOR EACH ROW
+BEGIN
+  INSERT INTO Weekly_Event (event_id, start_date, end_date, event_name, event_type, start_time, end_time, location, description, invitees, reminders, status)
+  SELECT event_id, DATE_SUB(start_time, INTERVAL WEEKDAY(start_time) DAY), DATE_ADD(DATE_SUB(start_time, INTERVAL WEEKDAY(start_time) DAY), INTERVAL 6 DAY), event_name, event_type, start_time, end_time, location, description, invitees, reminders, status
+  FROM Daily_Event
+  WHERE event_id = NEW.event_id;
+END;
+
+
+-- Trigger to update the weekly events table when update on daily events table
+
+CREATE TRIGGER update_weekly_from_daily
+AFTER UPDATE ON Daily_Event
+FOR EACH ROW
+BEGIN
+    UPDATE Weekly_Event
+    SET 
+        Weekly_Event.start_date = DATE_SUB(NEW.start_time, INTERVAL WEEKDAY(NEW.start_time) DAY),
+        Weekly_Event.end_date = DATE_ADD(DATE_SUB(NEW.start_time, INTERVAL WEEKDAY(NEW.start_time) DAY), INTERVAL 6 DAY),
+        Weekly_Event.event_name = NEW.event_name,
+        Weekly_Event.event_type = NEW.event_type,
+        Weekly_Event.start_time = NEW.start_time,
+        Weekly_Event.end_time = NEW.end_time,
+        Weekly_Event.location = NEW.location,
+        Weekly_Event.description = NEW.description,
+        Weekly_Event.invitees = NEW.invitees,
+        Weekly_Event.reminders = NEW.reminders,
+        Weekly_Event.status = NEW.status
+    WHERE Weekly_Event.event_id = NEW.event_id;
+END;
+
+
+-- Trigger to insert data into the monthly events table when insert on daily event table
+
+CREATE TRIGGER daily_to_monthly
+AFTER INSERT ON Daily_Event
+FOR EACH ROW
+BEGIN
+  INSERT INTO Monthly_Event (event_id, start_date, end_date, event_name, event_type, start_time, end_time, location, description, invitees, reminders, status)
+  SELECT event_id, 
+         DATE_FORMAT(start_time, '%Y-%m-01'), 
+         LAST_DAY(start_time) + INTERVAL (HOUR(end_time) * 60 + MINUTE(end_time)) MINUTE, 
+         event_name, event_type, start_time, end_time, location, description, invitees, reminders, status
+  FROM Daily_Event
+  WHERE event_id = NEW.event_id;
+END;
+
+-- Trigger to update the monthly events table when update on daily events table
+
+CREATE TRIGGER update_monthly_from_daily
+AFTER UPDATE ON Daily_Event
+FOR EACH ROW
+BEGIN
+  UPDATE Monthly_Event
+  SET Monthly_Event.event_name = NEW.event_name,
+      Monthly_Event.event_type = NEW.event_type,
+      Monthly_Event.start_time = NEW.start_time,
+      Monthly_Event.end_time = NEW.end_time,
+      Monthly_Event.location = NEW.location,
+      Monthly_Event.description = NEW.description,
+      Monthly_Event.invitees = NEW.invitees,
+      Monthly_Event.reminders = NEW.reminders,
+      Monthly_Event.status = NEW.status
+  WHERE Monthly_Event.event_id = NEW.event_id;
+END;
+
+
+-- Trigger to insert data into the yearly events table when insert on daily event table
+
+CREATE TRIGGER daily_to_yearly
+AFTER INSERT ON Daily_Event
+FOR EACH ROW
+BEGIN
+  INSERT INTO Yearly_Event (event_id, start_date, end_date, event_name, event_type, start_time, end_time, location, description, invitees, reminders, status)
+  SELECT event_id, CONCAT(YEAR(start_time), '-01-01'), CONCAT(YEAR(start_time), '-12-31 23:59:59'), event_name, event_type, start_time, end_time, location, description, invitees, reminders, status
+  FROM Daily_Event
+  WHERE event_id = NEW.event_id;
+END;
+
+-- Trigger to update the yearly events table when update on daily events table
+
+CREATE TRIGGER update_yearly_from_daily
+AFTER UPDATE ON Daily_Event
+FOR EACH ROW
+BEGIN
+  UPDATE Yearly_Event
+  SET Yearly_Event.event_name = NEW.event_name,
+      Yearly_Event.event_type = NEW.event_type,
+      Yearly_Event.start_time = NEW.start_time,
+      Yearly_Event.end_time = NEW.end_time,
+      Yearly_Event.location = NEW.location,
+      Yearly_Event.description = NEW.description,
+      Yearly_Event.invitees = NEW.invitees,
+      Yearly_Event.reminders = NEW.reminders,
+      Yearly_Event.status = NEW.status
+  WHERE Yearly_Event.event_id = NEW.event_id;
+END;
+
+
+-- Create Reminder Table
+
+CREATE TABLE Reminder (
+  ReminderID INT PRIMARY KEY AUTO_INCREMENT,
+  EventID INT,
+  ReminderType VARCHAR(50),
+  ReminderStatus VARCHAR(50),
+  RecipientEmail VARCHAR(255),
+  ScheduledTime TIME,
+  FOREIGN KEY (EventID) REFERENCES Daily_Event(event_id) ON DELETE CASCADE
+);
+
+
+--Trigger to update TimeDiff
+
+CREATE TRIGGER update_reminder_time_difference
+AFTER INSERT ON Daily_Event
+FOR EACH ROW
+BEGIN
+    DECLARE reminder_type VARCHAR(50);
+    DECLARE reminder_status VARCHAR(50);
+    DECLARE recipient_email VARCHAR(255);
+    DECLARE time_difference VARCHAR(20);
+
+    SELECT reminders, status, invitees, TIME_FORMAT(TIMEDIFF(NEW.end_time, NEW.start_time), '%H:%i') AS td
+    INTO reminder_type, reminder_status, recipient_email, time_difference
+    FROM Daily_Event
+    WHERE event_id = NEW.event_id;
+
+    INSERT INTO Reminder (EventID, ReminderType, ReminderStatus, RecipientEmail, ScheduledTime)
+    VALUES (NEW.event_id, reminder_type, reminder_status, recipient_email, time_difference);
+END;
+
+--Trigger to update the reminder when update on daily events table
+
+CREATE TRIGGER update_reminder_on_update_event
+AFTER UPDATE ON Daily_Event
+FOR EACH ROW
+BEGIN
+    UPDATE Reminder
+    SET Reminder.ReminderType = NEW.reminders,
+        Reminder.RecipientEmail = NEW.invitees,
+        Reminder.ReminderStatus = NEW.status,
+        Reminder.ScheduledTime = TIMEDIFF(NEW.end_time, NEW.start_time)
+    WHERE Reminder.EventID = NEW.event_id;
+END;
+
+
+--Create Metric Table
+
+CREATE TABLE Metric (
+  metric_id INT AUTO_INCREMENT PRIMARY KEY,
+  event_id INT,
+  metric_name VARCHAR(255),
+  metric_value INT,
+  metric_unit VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+-- Trigger to update the daily metrics table after insert on daily events table
+
+CREATE TRIGGER daily_to_metric
+AFTER INSERT ON Daily_Event
+FOR EACH ROW
+BEGIN
+  DECLARE metric_name VARCHAR(50);
+  SET metric_name = (SELECT event_type FROM Daily_Event WHERE event_id = NEW.event_id);
+  INSERT INTO Metric (event_id, metric_name, metric_value, metric_unit)
+  VALUES (NEW.event_id, metric_name, TIMESTAMPDIFF(MINUTE, NEW.start_time, NEW.end_time), 'minutes');
+END;
+
+-- Trigger to update the weekly metrics table after insert on weekly events table
+
+CREATE TRIGGER weekly_metric
+AFTER INSERT ON Weekly_Event
+FOR EACH ROW
+BEGIN
+  DECLARE event_type VARCHAR(50);
+  DECLARE total_time_spent INT;
+  
+  SET event_type = NEW.event_type;
+  SET total_time_spent = (
+    SELECT SUM(TIMESTAMPDIFF(MINUTE, start_time, end_time))
+    FROM Daily_Event
+    WHERE event_type = event_type
+      AND start_time >= DATE_SUB(NEW.start_time, INTERVAL 1 WEEK)
+      AND start_time < NEW.start_time
+  );
+  
+  IF total_time_spent IS NOT NULL THEN
+    INSERT INTO Metric (event_id, metric_name, metric_value, metric_unit)
+    VALUES (NEW.event_id, CONCAT(event_type, '_time_spent'), total_time_spent, 'minutes');
+  END IF;
+END;
+
+-- Trigger to update the monthly metrics table after insert on monthly events table
+
+CREATE TRIGGER monthly_to_metric
+AFTER INSERT ON Monthly_Event
+FOR EACH ROW
+BEGIN
+  INSERT INTO Metric (event_id, metric_name, metric_value, metric_unit, created_at)
+  VALUES (
+    NEW.event_id,
+    CONCAT(monthname(NEW.start_date), ' - ', NEW.event_type),
+    TIMESTAMPDIFF(MINUTE, NEW.start_time, NEW.end_time),
+    'minutes',
+    NOW()
+  );
+END;
+
+-- Trigger to update the yearly metrics table after insert on yearly events table
+
+CREATE TRIGGER yearly_to_metric
+AFTER INSERT ON Yearly_Event
+FOR EACH ROW
+BEGIN
+  INSERT INTO Metric (event_id, metric_name, metric_value, metric_unit, created_at)
+  SELECT
+    NEW.event_id,
+    CONCAT(year(NEW.start_date), ' - ', NEW.event_type) AS metric_name,
+    SUM(TIMESTAMPDIFF(MINUTE, NEW.start_time, NEW.end_time)),
+    'minutes' AS metric_unit,
+    NOW() AS created_at
+  FROM Yearly_Event
+  WHERE YEAR(start_date) = YEAR(NEW.start_date)
+  GROUP BY event_type;
+END;
